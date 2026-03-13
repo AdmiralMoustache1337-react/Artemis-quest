@@ -7,6 +7,7 @@ import android.opengl.GLES20;
 import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Surface;
 
@@ -52,6 +53,9 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
     private static final int GL_TEXTURE_EXTERNAL_OES = 0x8D65;
     private static final float[] QUAD_VERTICES = {-1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f};
     private static final float[] TEXTURE_VERTICES = {0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
+    private static final int AMBILIGHT_QUALITY_LOW = 0;
+    private static final int AMBILIGHT_QUALITY_MEDIUM = 1;
+    private static final int AMBILIGHT_QUALITY_HIGH = 2;
     private final String AI_MODEL = "midas-midas-v2-w8a8.tflite";
     private final int modelInputHeight = 256;
     private final int modelInputWidth = 256;
@@ -93,6 +97,27 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
     private int bilateralBlurProgram;
     private int depthMapTextureId;
     private int dibr3dProgram;
+
+    private int ambilightProgram;
+    private int ambilightPositionHandle = -1;
+    private int ambilightTexCoordHandle = -1;
+    private int ambilightTextureHandle = -1;
+    private int ambilightEnabledHandle = -1;
+    private int ambilightIntensityHandle = -1;
+    private int ambilightSpreadHandle = -1;
+    private int ambilightSaturationBoostHandle = -1;
+    private int ambilightEdgeWidthHandle = -1;
+
+    private boolean ambilightEnabled = true;
+    private float ambilightIntensity = 0.22f;
+    private float ambilightSpread = 1.35f;
+    private float ambilightSaturationBoost = 0.20f;
+    private float ambilightEdgeWidth = 0.08f;
+    private int ambilightQualityTier = AMBILIGHT_QUALITY_MEDIUM;
+    private float smoothedAmbilightIntensity = ambilightIntensity;
+    private float ambientSmoothingFactor = 0.18f;
+    private long smoothedFrameTimeNs = 0L;
+    private long lastFrameRenderTimeNs = 0L;
 
     private final AtomicReference<ByteBuffer> latestDepthMap = new AtomicReference<>(null);
     private int fboHandle;
@@ -195,6 +220,7 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
             GLES20.glDeleteProgram(simple3dProgram);
             GLES20.glDeleteProgram(bilateralBlurProgram);
             GLES20.glDeleteProgram(dibr3dProgram);
+            GLES20.glDeleteProgram(ambilightProgram);
 
             int[] textures = {
                     videoTextureId,
@@ -218,6 +244,8 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
         calcThreeDFps = 0.0f;
         renderer = "CPU";
         isActive = false;
+        lastFrameRenderTimeNs = 0L;
+        smoothedFrameTimeNs = 0L;
     }
 
     public Surface getVideoSurface() {
@@ -244,6 +272,9 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
         simple3dProgram = createProgram(ShaderUtils.SIMPLE_VERTEX_SHADER, ShaderUtils.SIMPLE_FRAGMENT_SHADER);
         bilateralBlurProgram = createProgram(ShaderUtils.VERTEX_SHADER, ShaderUtils.OPTIMIZED_SINGLE_PASS_GAUSSIAN_BLUR_SHADER);
         dibr3dProgram = createProgram(ShaderUtils.VERTEX_SHADER, ShaderUtils.FRAGMENT_SHADER_3D);
+        ambilightProgram = createProgram(ShaderUtils.VERTEX_SHADER, ShaderUtils.AMBILIGHT_FRAGMENT_SHADER);
+        cacheAmbilightHandles();
+        initializeAmbilightConfig();
 
         initializeFilterFbo();
         initializeIntermediateFbo();
@@ -343,6 +374,108 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
 
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+    }
+
+    private void cacheAmbilightHandles() {
+        if (ambilightProgram == 0) {
+            return;
+        }
+        ambilightPositionHandle = GLES20.glGetAttribLocation(ambilightProgram, "a_Position");
+        ambilightTexCoordHandle = GLES20.glGetAttribLocation(ambilightProgram, "a_TexCoord");
+        ambilightTextureHandle = GLES20.glGetUniformLocation(ambilightProgram, "u_Texture");
+        ambilightEnabledHandle = GLES20.glGetUniformLocation(ambilightProgram, "u_ambilightEnabled");
+        ambilightIntensityHandle = GLES20.glGetUniformLocation(ambilightProgram, "u_intensity");
+        ambilightSpreadHandle = GLES20.glGetUniformLocation(ambilightProgram, "u_spread");
+        ambilightSaturationBoostHandle = GLES20.glGetUniformLocation(ambilightProgram, "u_saturationBoost");
+        ambilightEdgeWidthHandle = GLES20.glGetUniformLocation(ambilightProgram, "u_edgeWidth");
+    }
+
+    private void initializeAmbilightConfig() {
+        try {
+            ambilightEnabled = PreferenceManager.getDefaultSharedPreferences(context)
+                    .getBoolean("checkbox_enable_ambilight", true);
+        } catch (Exception e) {
+            ambilightEnabled = true;
+        }
+        smoothedAmbilightIntensity = ambilightIntensity;
+    }
+
+    private void updateAmbilightQualityAndSmoothing(long frameTimeNs) {
+        if (frameTimeNs <= 0) {
+            return;
+        }
+        if (smoothedFrameTimeNs == 0L) {
+            smoothedFrameTimeNs = frameTimeNs;
+        }
+        smoothedFrameTimeNs = (long) (smoothedFrameTimeNs * 0.9f + frameTimeNs * 0.1f);
+
+        if (smoothedFrameTimeNs > 20_000_000L) {
+            ambilightQualityTier = AMBILIGHT_QUALITY_LOW;
+        } else if (smoothedFrameTimeNs < 14_500_000L) {
+            ambilightQualityTier = AMBILIGHT_QUALITY_HIGH;
+        } else {
+            ambilightQualityTier = AMBILIGHT_QUALITY_MEDIUM;
+        }
+
+        float qualityIntensityScale;
+        float qualitySpreadScale;
+        float qualityEdgeWidth;
+        switch (ambilightQualityTier) {
+            case AMBILIGHT_QUALITY_LOW:
+                qualityIntensityScale = 0.8f;
+                qualitySpreadScale = 0.8f;
+                qualityEdgeWidth = 0.06f;
+                ambientSmoothingFactor = 0.12f;
+                break;
+            case AMBILIGHT_QUALITY_HIGH:
+                qualityIntensityScale = 1.0f;
+                qualitySpreadScale = 1.15f;
+                qualityEdgeWidth = 0.1f;
+                ambientSmoothingFactor = 0.22f;
+                break;
+            case AMBILIGHT_QUALITY_MEDIUM:
+            default:
+                qualityIntensityScale = 0.9f;
+                qualitySpreadScale = 1.0f;
+                qualityEdgeWidth = 0.08f;
+                ambientSmoothingFactor = 0.18f;
+                break;
+        }
+
+        float targetIntensity = ambilightIntensity * qualityIntensityScale;
+        smoothedAmbilightIntensity += (targetIntensity - smoothedAmbilightIntensity) * ambientSmoothingFactor;
+        ambilightSpread = Math.max(0.5f, 1.35f * qualitySpreadScale);
+        ambilightEdgeWidth = qualityEdgeWidth;
+    }
+
+    private void drawAmbilightPass() {
+        if (!ambilightEnabled || ambilightProgram == 0) {
+            return;
+        }
+        if (ambilightPositionHandle < 0 || ambilightTexCoordHandle < 0) {
+            return;
+        }
+
+        GLES20.glUseProgram(ambilightProgram);
+        GLES20.glVertexAttribPointer(ambilightPositionHandle, 2, GLES20.GL_FLOAT, false, 0, quadVertexBuffer);
+        GLES20.glVertexAttribPointer(ambilightTexCoordHandle, 2, GLES20.GL_FLOAT, false, 0, textureVertexBuffer);
+        GLES20.glEnableVertexAttribArray(ambilightPositionHandle);
+        GLES20.glEnableVertexAttribArray(ambilightTexCoordHandle);
+
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        GLES20.glBindTexture(GL_TEXTURE_EXTERNAL_OES, videoTextureId);
+        GLES20.glUniform1i(ambilightTextureHandle, 0);
+
+        GLES20.glUniform1i(ambilightEnabledHandle, 1);
+        GLES20.glUniform1f(ambilightIntensityHandle, smoothedAmbilightIntensity);
+        GLES20.glUniform1f(ambilightSpreadHandle, ambilightSpread);
+        GLES20.glUniform1f(ambilightSaturationBoostHandle, ambilightSaturationBoost);
+        GLES20.glUniform1f(ambilightEdgeWidthHandle, ambilightEdgeWidth);
+
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+        GLES20.glDisable(GLES20.GL_BLEND);
     }
 
     private void drawBothEyes(int dualBubble3dProgram, float convergence, float shift) {
@@ -484,6 +617,11 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
                 uploadLatestDepthMapToGpu(currentlyRenderingMap);
             }
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+            long nowNs = System.nanoTime();
+            long frameTime = lastFrameRenderTimeNs == 0L ? 16_666_666L : (nowNs - lastFrameRenderTimeNs);
+            lastFrameRenderTimeNs = nowNs;
+            updateAmbilightQualityAndSmoothing(frameTime);
+            drawAmbilightPass();
             applyTwoPassGaussianBlur();
             drawWithShader();
             long endTime = System.nanoTime();

@@ -199,4 +199,50 @@ public class ShaderUtils {
                     "void main() {\n" +
                     "    gl_FragColor = texture2D(u_Texture, v_TexCoord);\n" +
                     "}\n";
+
+    public static final String AMBILIGHT_FRAGMENT_SHADER =
+            "#extension GL_OES_EGL_image_external : require\n" +
+                    "precision mediump float;\n" +
+                    "varying vec2 v_TexCoord;\n" +
+                    "uniform samplerExternalOES u_Texture;\n" +
+                    "uniform bool u_ambilightEnabled;\n" +
+                    "uniform float u_intensity;\n" +
+                    "uniform float u_spread;\n" +
+                    "uniform float u_saturationBoost;\n" +
+                    "uniform float u_edgeWidth;\n" +
+                    "\n" +
+                    "vec3 sampleEdgeColor() {\n" +
+                    "    float edge = clamp(u_edgeWidth, 0.01, 0.35);\n" +
+                    "    float spread = clamp(u_spread, 0.5, 3.0);\n" +
+                    "\n" +
+                    "    vec2 uvTop = vec2(v_TexCoord.x, edge);\n" +
+                    "    vec2 uvBottom = vec2(v_TexCoord.x, 1.0 - edge);\n" +
+                    "    vec2 uvLeft = vec2(edge, v_TexCoord.y);\n" +
+                    "    vec2 uvRight = vec2(1.0 - edge, v_TexCoord.y);\n" +
+                    "\n" +
+                    "    vec3 edgeColor = (\n" +
+                    "            texture2D(u_Texture, uvTop).rgb +\n" +
+                    "            texture2D(u_Texture, uvBottom).rgb +\n" +
+                    "            texture2D(u_Texture, uvLeft).rgb +\n" +
+                    "            texture2D(u_Texture, uvRight).rgb\n" +
+                    "    ) * 0.25;\n" +
+                    "\n" +
+                    "    float luma = dot(edgeColor, vec3(0.2126, 0.7152, 0.0722));\n" +
+                    "    edgeColor = mix(vec3(luma), edgeColor, 1.0 + clamp(u_saturationBoost, 0.0, 1.5));\n" +
+                    "\n" +
+                    "    float edgeFactorX = 1.0 - smoothstep(0.0, edge * spread, min(v_TexCoord.x, 1.0 - v_TexCoord.x));\n" +
+                    "    float edgeFactorY = 1.0 - smoothstep(0.0, edge * spread, min(v_TexCoord.y, 1.0 - v_TexCoord.y));\n" +
+                    "    float edgeFactor = max(edgeFactorX, edgeFactorY);\n" +
+                    "\n" +
+                    "    return edgeColor * edgeFactor * clamp(u_intensity, 0.0, 1.0);\n" +
+                    "}\n" +
+                    "\n" +
+                    "void main() {\n" +
+                    "    if (!u_ambilightEnabled) {\n" +
+                    "        gl_FragColor = vec4(0.0);\n" +
+                    "        return;\n" +
+                    "    }\n" +
+                    "\n" +
+                    "    gl_FragColor = vec4(sampleEdgeColor(), 1.0);\n" +
+                    "}\n";
 }
