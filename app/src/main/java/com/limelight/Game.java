@@ -458,6 +458,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         // Listen for non-touch events on the game surface
         streamContainer = findViewById(R.id.streamContainer);
         streamContainer.init(this, prefConfig);
+        streamContainer.refreshPreferences(prefConfig);
         streamContainer.setOnGenericMotionListener(this);
         streamContainer.setOnKeyListener(this);
         streamContainer.setInputCallbacks(this);
@@ -868,6 +869,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             if (!attemptedConnection) {
                 LimeLog.info("Surface is available, starting connection...");
                 attemptedConnection = true;
+
+                prefConfig = PreferenceConfiguration.readPreferences(Game.this);
+                streamContainer.refreshPreferences(prefConfig);
 
                 // Der Decoder erhält die jeweils aktive Oberfläche vom Container
                 decoderRenderer.setRenderTarget(streamContainer.getSurface());

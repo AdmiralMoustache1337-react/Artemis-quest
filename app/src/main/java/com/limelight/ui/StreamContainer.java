@@ -54,6 +54,7 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
     private boolean fillDisplay = false;
 
     private boolean isSurfaceReady = false;
+    private boolean ambilightSupportNotified = false;
 
     public StreamContainer(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -87,6 +88,7 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
             GLSurfaceView glSurfaceView = new GLSurfaceView(context);
             glSurfaceView.setEGLContextClientVersion(3);
             mStereoRenderer = new Stereo3DRenderer(glSurfaceView, this, context, prefConfig);
+            mStereoRenderer.applyAmbilightPreferences(prefConfig, true);
             glSurfaceView.setRenderer(mStereoRenderer);
             glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
             mSurfaceView = glSurfaceView;
@@ -97,6 +99,11 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
         if (mSurfaceView.getHolder().getSurface() != null && mSurfaceView.getHolder().getSurface().isValid()) {
             surfaceChanged(mSurfaceView.getHolder(), PixelFormat.RGBA_8888, mSurfaceView.getWidth(), mSurfaceView.getHeight());
         }
+        if (renderMode == StreamMode.MODE_2D && prefConfig.enableAmbilight && !ambilightSupportNotified) {
+            LimeLog.info("Ambilight is enabled in preferences but unavailable in 2D mode; disabling for this session.");
+            ambilightSupportNotified = true;
+        }
+
     }
 
     // --- Aspect Ratio and Scaling Logic ---
@@ -262,6 +269,20 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
         if (renderMode != StreamMode.MODE_2D) {
             mCurrentSurface = surface;
             notifySurfaceReady();
+        }
+    }
+
+    public void refreshPreferences(PreferenceConfiguration updatedPrefConfig) {
+        if (updatedPrefConfig == null) {
+            return;
+        }
+
+        prefConfig = updatedPrefConfig;
+        if (mStereoRenderer != null) {
+            mStereoRenderer.applyAmbilightPreferences(updatedPrefConfig, renderMode != StreamMode.MODE_2D);
+        } else if (renderMode == StreamMode.MODE_2D && prefConfig.enableAmbilight && !ambilightSupportNotified) {
+            LimeLog.info("Ambilight setting is ignored in 2D mode.");
+            ambilightSupportNotified = true;
         }
     }
 
