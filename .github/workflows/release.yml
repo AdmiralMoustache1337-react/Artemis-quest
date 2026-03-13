@@ -24,32 +24,19 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Accept SDK licenses and install required SDK packages
-        run: |
-          yes | sdkmanager --licenses >/dev/null
-          sdkmanager \
-            "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.0.0" \
-            "ndk;27.0.12077973"
+      - name: Install Android NDK
+        run: sdkmanager "ndk;27.0.12077973"
 
       - name: Create local.properties
         run: |
-          cat > local.properties <<EOL
-          sdk.dir=${ANDROID_SDK_ROOT}
-          ndk.dir=${ANDROID_SDK_ROOT}/ndk/27.0.12077973
-          EOL
-
-      - name: Ensure Gradle wrapper is executable
-        run: chmod +x ./gradlew
+          echo "ndk.dir=${ANDROID_SDK_ROOT}/ndk/27.0.12077973" > local.properties
 
       - name: Build release artifacts
-        run: ./gradlew --stacktrace clean assembleRelease bundleRelease
+        run: ./gradlew clean assembleRelease bundleRelease
 
       - name: Upload artifacts to workflow run
         uses: actions/upload-artifact@v4

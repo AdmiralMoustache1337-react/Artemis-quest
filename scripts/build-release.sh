@@ -36,18 +36,6 @@ if (( JAVA_MAJOR != 17 )); then
 fi
 
 cd "$ROOT_DIR"
-
-if [[ ! -f local.properties ]]; then
-  cat <<'EOT'
-WARNING: local.properties was not found.
-Create local.properties with sdk.dir (and ndk.dir if needed) before building.
-Example:
-  sdk.dir=/path/to/Android/Sdk
-  ndk.dir=/path/to/Android/Sdk/ndk/27.0.12077973
-EOT
-fi
-
-chmod +x ./gradlew
 ./gradlew clean assembleRelease bundleRelease
 
 echo "\nRelease artifacts are available under:"
