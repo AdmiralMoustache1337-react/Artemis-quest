@@ -7,7 +7,6 @@ import android.opengl.GLES20;
 import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
-import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Surface;
 
@@ -391,13 +390,44 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
     }
 
     private void initializeAmbilightConfig() {
-        try {
-            ambilightEnabled = PreferenceManager.getDefaultSharedPreferences(context)
-                    .getBoolean("checkbox_enable_ambilight", true);
-        } catch (Exception e) {
-            ambilightEnabled = true;
+        if (prefConfig != null) {
+            applyAmbilightPreferences(prefConfig, true);
+            return;
         }
+
+        ambilightEnabled = true;
         smoothedAmbilightIntensity = ambilightIntensity;
+    }
+
+    public void applyAmbilightPreferences(PreferenceConfiguration updatedConfig, boolean isAmbilightSupported) {
+        if (updatedConfig == null) {
+            return;
+        }
+
+        prefConfig = updatedConfig;
+        ambilightEnabled = isAmbilightSupported && updatedConfig.enableAmbilight;
+        ambilightIntensity = clamp(updatedConfig.ambilightIntensity, 0.0f, 1.0f);
+        ambilightSpread = 1.0f + clamp(updatedConfig.ambilightSpread, 0.0f, 1.0f);
+        ambilightSaturationBoost = 0.08f + clamp(updatedConfig.ambilightIntensity, 0.0f, 1.0f) * 0.35f;
+        ambientSmoothingFactor = 0.05f + clamp(updatedConfig.ambilightSmoothing, 0.0f, 1.0f) * 0.30f;
+
+        switch (updatedConfig.ambilightQuality) {
+            case AMBILIGHT_QUALITY_LOW:
+            case AMBILIGHT_QUALITY_HIGH:
+                ambilightQualityTier = updatedConfig.ambilightQuality;
+                break;
+            case AMBILIGHT_QUALITY_MEDIUM:
+            default:
+                ambilightQualityTier = AMBILIGHT_QUALITY_MEDIUM;
+                break;
+        }
+
+        smoothedAmbilightIntensity = ambilightIntensity;
+        smoothedFrameTimeNs = 0L;
+    }
+
+    private static float clamp(float value, float min, float max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     private void updateAmbilightQualityAndSmoothing(long frameTimeNs) {
