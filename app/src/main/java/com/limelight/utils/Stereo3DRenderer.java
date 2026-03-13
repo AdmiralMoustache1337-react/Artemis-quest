@@ -55,6 +55,12 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
     private static final int AMBILIGHT_QUALITY_LOW = 0;
     private static final int AMBILIGHT_QUALITY_MEDIUM = 1;
     private static final int AMBILIGHT_QUALITY_HIGH = 2;
+    private static final int AMBILIGHT_VIGNETTE_LINEAR = 0;
+    private static final int AMBILIGHT_VIGNETTE_SMOOTH = 1;
+    private static final int AMBILIGHT_VIGNETTE_CINEMATIC = 2;
+    private static final int AMBILIGHT_PRESET_AUTO = 0;
+    private static final int AMBILIGHT_PRESET_QUEST_2 = 1;
+    private static final int AMBILIGHT_PRESET_QUEST_3 = 2;
     private final String AI_MODEL = "midas-midas-v2-w8a8.tflite";
     private final int modelInputHeight = 256;
     private final int modelInputWidth = 256;
@@ -106,6 +112,7 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
     private int ambilightSpreadHandle = -1;
     private int ambilightSaturationBoostHandle = -1;
     private int ambilightEdgeWidthHandle = -1;
+    private int ambilightVignetteModeHandle = -1;
 
     private boolean ambilightEnabled = true;
     private float ambilightIntensity = 0.22f;
@@ -118,6 +125,7 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
     private float smoothedAmbilightIntensity = ambilightIntensity;
     private float ambientSmoothingFactor = 0.18f;
     private float userAmbilightSmoothing = 0.65f;
+    private int ambilightVignetteMode = AMBILIGHT_VIGNETTE_SMOOTH;
     private long smoothedFrameTimeNs = 0L;
     private long lastFrameRenderTimeNs = 0L;
 
@@ -390,6 +398,7 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
         ambilightSpreadHandle = GLES20.glGetUniformLocation(ambilightProgram, "u_spread");
         ambilightSaturationBoostHandle = GLES20.glGetUniformLocation(ambilightProgram, "u_saturationBoost");
         ambilightEdgeWidthHandle = GLES20.glGetUniformLocation(ambilightProgram, "u_edgeWidth");
+        ambilightVignetteModeHandle = GLES20.glGetUniformLocation(ambilightProgram, "u_vignetteMode");
     }
 
     private void initializeAmbilightConfig() {
@@ -427,10 +436,48 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
                 break;
         }
 
+        switch (updatedConfig.ambilightVignetteMode) {
+            case AMBILIGHT_VIGNETTE_LINEAR:
+            case AMBILIGHT_VIGNETTE_CINEMATIC:
+                ambilightVignetteMode = updatedConfig.ambilightVignetteMode;
+                break;
+            case AMBILIGHT_VIGNETTE_SMOOTH:
+            default:
+                ambilightVignetteMode = AMBILIGHT_VIGNETTE_SMOOTH;
+                break;
+        }
+
+        applyDevicePreset(updatedConfig.ambilightDevicePreset);
+
         ambilightQualityTier = ambilightPreferredQualityTier;
 
         smoothedAmbilightIntensity = ambilightIntensity;
         smoothedFrameTimeNs = 0L;
+    }
+
+    private void applyDevicePreset(int requestedPreset) {
+        int resolvedPreset = requestedPreset;
+        if (requestedPreset == AMBILIGHT_PRESET_AUTO) {
+            String model = Build.MODEL == null ? "" : Build.MODEL.toLowerCase();
+            if (model.contains("quest 3") || model.contains("eureka")) {
+                resolvedPreset = AMBILIGHT_PRESET_QUEST_3;
+            } else if (model.contains("quest 2") || model.contains("hollywood")) {
+                resolvedPreset = AMBILIGHT_PRESET_QUEST_2;
+            }
+        }
+
+        switch (resolvedPreset) {
+            case AMBILIGHT_PRESET_QUEST_2:
+                ambilightIntensity = clamp(ambilightIntensity * 0.90f, 0.0f, 1.0f);
+                ambilightBaseSpread = Math.max(1.0f, ambilightBaseSpread * 0.95f);
+                break;
+            case AMBILIGHT_PRESET_QUEST_3:
+                ambilightIntensity = clamp(ambilightIntensity * 1.05f, 0.0f, 1.0f);
+                ambilightBaseSpread = Math.max(1.0f, ambilightBaseSpread * 1.08f);
+                break;
+            default:
+                break;
+        }
     }
 
     private static float clamp(float value, float min, float max) {
@@ -506,6 +553,7 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
         GLES20.glUniform1f(ambilightSpreadHandle, ambilightSpread);
         GLES20.glUniform1f(ambilightSaturationBoostHandle, ambilightSaturationBoost);
         GLES20.glUniform1f(ambilightEdgeWidthHandle, ambilightEdgeWidth);
+        GLES20.glUniform1f(ambilightVignetteModeHandle, ambilightVignetteMode);
 
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
     }
