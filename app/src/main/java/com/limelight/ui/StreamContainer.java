@@ -12,9 +12,11 @@ import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.widget.FrameLayout;
+import android.widget.Toast;
 
 import com.limelight.Game;
 import com.limelight.LimeLog;
+import com.limelight.R;
 import com.limelight.preferences.PreferenceConfiguration;
 import com.limelight.utils.Stereo3DRenderer;
 
@@ -72,6 +74,8 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
         this.prefConfig = prefConfig;
         this.renderMode = mapIntToStreamMode(prefConfig.renderMode);
 
+        notifyAmbilightUnsupportedIfNeeded(prefConfig.enableAmbilight);
+
         Stereo3DRenderer.isMovieMode = renderMode == StreamMode.MODE_AI_3D_MOVIE;
 
         isSurfaceReady = false;
@@ -99,10 +103,7 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
         if (mSurfaceView.getHolder().getSurface() != null && mSurfaceView.getHolder().getSurface().isValid()) {
             surfaceChanged(mSurfaceView.getHolder(), PixelFormat.RGBA_8888, mSurfaceView.getWidth(), mSurfaceView.getHeight());
         }
-        if (renderMode == StreamMode.MODE_2D && prefConfig.enableAmbilight && !ambilightSupportNotified) {
-            LimeLog.info("Ambilight is enabled in preferences but unavailable in 2D mode; disabling for this session.");
-            ambilightSupportNotified = true;
-        }
+        notifyAmbilightUnsupportedIfNeeded(prefConfig.enableAmbilight);
 
     }
 
@@ -280,8 +281,15 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
         prefConfig = updatedPrefConfig;
         if (mStereoRenderer != null) {
             mStereoRenderer.applyAmbilightPreferences(updatedPrefConfig, renderMode != StreamMode.MODE_2D);
-        } else if (renderMode == StreamMode.MODE_2D && prefConfig.enableAmbilight && !ambilightSupportNotified) {
-            LimeLog.info("Ambilight setting is ignored in 2D mode.");
+        } else {
+            notifyAmbilightUnsupportedIfNeeded(prefConfig.enableAmbilight);
+        }
+    }
+
+    private void notifyAmbilightUnsupportedIfNeeded(boolean ambilightRequested) {
+        if (renderMode == StreamMode.MODE_2D && ambilightRequested && !ambilightSupportNotified) {
+            LimeLog.info("Ambilight is enabled in preferences but unavailable in 2D mode; disabling for this session.");
+            Toast.makeText(getContext(), R.string.toast_ambilight_disabled_2d, Toast.LENGTH_LONG).show();
             ambilightSupportNotified = true;
         }
     }

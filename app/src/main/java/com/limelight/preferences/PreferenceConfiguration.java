@@ -910,7 +910,12 @@ private static int getFramePacingValue(Context context) {
         config.ambilightIntensity = prefs.getInt(AMBILIGHT_INTENSITY_PREF_STRING, DEFAULT_AMBILIGHT_INTENSITY) / 100f;
         config.ambilightSpread = prefs.getInt(AMBILIGHT_SPREAD_PREF_STRING, DEFAULT_AMBILIGHT_SPREAD) / 100f;
         config.ambilightSmoothing = prefs.getInt(AMBILIGHT_SMOOTHING_PREF_STRING, DEFAULT_AMBILIGHT_SMOOTHING) / 100f;
-        config.ambilightQuality = Integer.parseInt(prefs.getString(AMBILIGHT_QUALITY_PREF_STRING, DEFAULT_AMBILIGHT_QUALITY));
+        try {
+            config.ambilightQuality = Integer.parseInt(
+                    prefs.getString(AMBILIGHT_QUALITY_PREF_STRING, DEFAULT_AMBILIGHT_QUALITY));
+        } catch (Exception e) {
+            config.ambilightQuality = Integer.parseInt(DEFAULT_AMBILIGHT_QUALITY);
+        }
 
         // Read mouse mode and set touch settings accordingly
         String mouseMode = prefs.getString("mouse_mode_list", "0");

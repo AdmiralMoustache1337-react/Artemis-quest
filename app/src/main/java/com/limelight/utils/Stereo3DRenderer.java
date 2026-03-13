@@ -113,8 +113,11 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
     private float ambilightSaturationBoost = 0.20f;
     private float ambilightEdgeWidth = 0.08f;
     private int ambilightQualityTier = AMBILIGHT_QUALITY_MEDIUM;
+    private int ambilightPreferredQualityTier = AMBILIGHT_QUALITY_MEDIUM;
+    private float ambilightBaseSpread = 1.35f;
     private float smoothedAmbilightIntensity = ambilightIntensity;
     private float ambientSmoothingFactor = 0.18f;
+    private float userAmbilightSmoothing = 0.65f;
     private long smoothedFrameTimeNs = 0L;
     private long lastFrameRenderTimeNs = 0L;
 
@@ -407,20 +410,24 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
         prefConfig = updatedConfig;
         ambilightEnabled = isAmbilightSupported && updatedConfig.enableAmbilight;
         ambilightIntensity = clamp(updatedConfig.ambilightIntensity, 0.0f, 1.0f);
-        ambilightSpread = 1.0f + clamp(updatedConfig.ambilightSpread, 0.0f, 1.0f);
+        ambilightBaseSpread = 1.0f + clamp(updatedConfig.ambilightSpread, 0.0f, 1.0f);
+        ambilightSpread = ambilightBaseSpread;
         ambilightSaturationBoost = 0.08f + clamp(updatedConfig.ambilightIntensity, 0.0f, 1.0f) * 0.35f;
-        ambientSmoothingFactor = 0.05f + clamp(updatedConfig.ambilightSmoothing, 0.0f, 1.0f) * 0.30f;
+        userAmbilightSmoothing = clamp(updatedConfig.ambilightSmoothing, 0.0f, 1.0f);
+        ambientSmoothingFactor = 0.05f + userAmbilightSmoothing * 0.30f;
 
         switch (updatedConfig.ambilightQuality) {
             case AMBILIGHT_QUALITY_LOW:
             case AMBILIGHT_QUALITY_HIGH:
-                ambilightQualityTier = updatedConfig.ambilightQuality;
+                ambilightPreferredQualityTier = updatedConfig.ambilightQuality;
                 break;
             case AMBILIGHT_QUALITY_MEDIUM:
             default:
-                ambilightQualityTier = AMBILIGHT_QUALITY_MEDIUM;
+                ambilightPreferredQualityTier = AMBILIGHT_QUALITY_MEDIUM;
                 break;
         }
+
+        ambilightQualityTier = ambilightPreferredQualityTier;
 
         smoothedAmbilightIntensity = ambilightIntensity;
         smoothedFrameTimeNs = 0L;
@@ -439,12 +446,10 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
         }
         smoothedFrameTimeNs = (long) (smoothedFrameTimeNs * 0.9f + frameTimeNs * 0.1f);
 
+        ambilightQualityTier = ambilightPreferredQualityTier;
+
         if (smoothedFrameTimeNs > 20_000_000L) {
             ambilightQualityTier = AMBILIGHT_QUALITY_LOW;
-        } else if (smoothedFrameTimeNs < 14_500_000L) {
-            ambilightQualityTier = AMBILIGHT_QUALITY_HIGH;
-        } else {
-            ambilightQualityTier = AMBILIGHT_QUALITY_MEDIUM;
         }
 
         float qualityIntensityScale;
@@ -455,26 +460,26 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
                 qualityIntensityScale = 0.8f;
                 qualitySpreadScale = 0.8f;
                 qualityEdgeWidth = 0.06f;
-                ambientSmoothingFactor = 0.12f;
+                ambientSmoothingFactor = 0.08f + userAmbilightSmoothing * 0.10f;
                 break;
             case AMBILIGHT_QUALITY_HIGH:
                 qualityIntensityScale = 1.0f;
                 qualitySpreadScale = 1.15f;
                 qualityEdgeWidth = 0.1f;
-                ambientSmoothingFactor = 0.22f;
+                ambientSmoothingFactor = 0.12f + userAmbilightSmoothing * 0.18f;
                 break;
             case AMBILIGHT_QUALITY_MEDIUM:
             default:
                 qualityIntensityScale = 0.9f;
                 qualitySpreadScale = 1.0f;
                 qualityEdgeWidth = 0.08f;
-                ambientSmoothingFactor = 0.18f;
+                ambientSmoothingFactor = 0.10f + userAmbilightSmoothing * 0.14f;
                 break;
         }
 
         float targetIntensity = ambilightIntensity * qualityIntensityScale;
         smoothedAmbilightIntensity += (targetIntensity - smoothedAmbilightIntensity) * ambientSmoothingFactor;
-        ambilightSpread = Math.max(0.5f, 1.35f * qualitySpreadScale);
+        ambilightSpread = Math.max(0.5f, ambilightBaseSpread * qualitySpreadScale);
         ambilightEdgeWidth = qualityEdgeWidth;
     }
 
