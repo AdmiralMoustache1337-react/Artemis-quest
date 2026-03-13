@@ -53,11 +53,23 @@ jobs:
           BUILD_TOOLS_DIR="$(find "$ANDROID_SDK_ROOT/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
           APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
 
-          found_unsigned=0
-          for apk in app/build/outputs/apk/nonRoot_game/release/*unsigned.apk; do
+          found_apk=0
+          signed_any=0
+          for apk in app/build/outputs/apk/nonRoot_game/release/*.apk; do
             [ -f "$apk" ] || continue
-            found_unsigned=1
-            signed_apk="${apk%-unsigned.apk}.apk"
+            found_apk=1
+
+            if "$APKSIGNER" verify "$apk" >/dev/null 2>&1; then
+              echo "Already signed: $apk"
+              continue
+            fi
+
+            signed_any=1
+            signed_apk="$apk"
+            if [[ "$apk" == *-unsigned.apk ]]; then
+              signed_apk="${apk%-unsigned.apk}.apk"
+            fi
+
             "$APKSIGNER" sign \
               --ks release-keystore.jks \
               --ks-key-alias artemis \
@@ -66,12 +78,19 @@ jobs:
               --out "$signed_apk" \
               "$apk"
             "$APKSIGNER" verify "$signed_apk"
-            rm -f "$apk"
+
+            if [ "$signed_apk" != "$apk" ]; then
+              rm -f "$apk"
+            fi
           done
 
-          if [ "$found_unsigned" -eq 0 ]; then
-            echo "No unsigned APK found to sign" >&2
+          if [ "$found_apk" -eq 0 ]; then
+            echo "No APK found in output directory" >&2
             exit 1
+          fi
+
+          if [ "$signed_any" -eq 0 ]; then
+            echo "No unsigned APK found to sign; all APKs were already signed"
           fi
 
       - name: Upload artifacts to workflow run
