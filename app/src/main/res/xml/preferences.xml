@@ -273,6 +273,26 @@
             android:summary="@string/summary_ambilight_quality"
             android:title="@string/title_ambilight_quality"
             app:iconSpaceReserved="false" />
+
+        <ListPreference
+            android:defaultValue="1"
+            android:entries="@array/ambilight_vignette_mode_names"
+            android:entryValues="@array/ambilight_vignette_mode_values"
+            android:key="ambilight_vignette_mode"
+            android:dependency="checkbox_enable_ambilight"
+            android:summary="@string/summary_ambilight_vignette_mode"
+            android:title="@string/title_ambilight_vignette_mode"
+            app:iconSpaceReserved="false" />
+
+        <ListPreference
+            android:defaultValue="0"
+            android:entries="@array/ambilight_device_preset_names"
+            android:entryValues="@array/ambilight_device_preset_values"
+            android:key="ambilight_device_preset"
+            android:dependency="checkbox_enable_ambilight"
+            android:summary="@string/summary_ambilight_device_preset"
+            android:title="@string/title_ambilight_device_preset"
+            app:iconSpaceReserved="false" />
     </PreferenceCategory>
 
     <PreferenceCategory

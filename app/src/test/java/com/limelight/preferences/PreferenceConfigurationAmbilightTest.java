@@ -47,6 +47,8 @@ public class PreferenceConfigurationAmbilightTest {
         assertEquals(0.35f, config.ambilightSpread, 0.0001f);
         assertEquals(0.65f, config.ambilightSmoothing, 0.0001f);
         assertEquals(1, config.ambilightQuality);
+        assertEquals(1, config.ambilightVignetteMode);
+        assertEquals(0, config.ambilightDevicePreset);
     }
 
     @Test
@@ -57,6 +59,8 @@ public class PreferenceConfigurationAmbilightTest {
                 .putInt("ambilight_spread", 55)
                 .putInt("ambilight_smoothing", 20)
                 .putString("ambilight_quality", "2")
+                .putString("ambilight_vignette_mode", "2")
+                .putString("ambilight_device_preset", "1")
                 .commit();
 
         PreferenceConfiguration config = PreferenceConfiguration.readPreferences(context);
@@ -66,16 +70,22 @@ public class PreferenceConfigurationAmbilightTest {
         assertEquals(0.55f, config.ambilightSpread, 0.0001f);
         assertEquals(0.20f, config.ambilightSmoothing, 0.0001f);
         assertEquals(2, config.ambilightQuality);
+        assertEquals(2, config.ambilightVignetteMode);
+        assertEquals(1, config.ambilightDevicePreset);
     }
 
     @Test
     public void readPreferences_fallsBackOnInvalidAmbilightQuality() {
         prefs.edit()
                 .putString("ambilight_quality", "invalid")
+                .putString("ambilight_vignette_mode", "invalid")
+                .putString("ambilight_device_preset", "invalid")
                 .commit();
 
         PreferenceConfiguration config = PreferenceConfiguration.readPreferences(context);
 
         assertEquals(1, config.ambilightQuality);
+        assertEquals(1, config.ambilightVignetteMode);
+        assertEquals(0, config.ambilightDevicePreset);
     }
 }
