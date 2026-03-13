@@ -67,6 +67,8 @@ Tasks:
 **Acceptance criteria:** shader compiles; no GLES link errors.
 
 ### Step 1.2: Extend `Stereo3DRenderer` state
+Status: ✅ Done on branch `work`.
+
 Files:
 - `app/src/main/java/com/limelight/utils/Stereo3DRenderer.java`
 
@@ -78,6 +80,8 @@ Tasks:
 **Acceptance criteria:** no resource leak, clean teardown.
 
 ### Step 1.3: Implement draw order
+Status: ✅ Done on branch `work`.
+
 1. In `onDrawFrame`, render sequence:
    - clear frame
    - draw ambilight background pass
@@ -87,12 +91,16 @@ Tasks:
 **Acceptance criteria:** visible soft glow around frame edges in GL modes.
 
 ### Step 1.4: Optional temporal smoothing
+Status: ✅ Done on branch `work`.
+
 1. Add lightweight temporal smoothing on sampled edge colors.
 2. Clamp transitions to avoid flicker on fast scene cuts.
 
 **Acceptance criteria:** smoother color transitions, no strobing.
 
 ### Step 1.5: Performance guardrails
+Status: ✅ Done on branch `work`.
+
 1. Implement quality tiering:
    - low (fewer samples)
    - medium (default)
@@ -102,6 +110,8 @@ Tasks:
 **Acceptance criteria:** stable FPS on Quest target profiles.
 
 ---
+
+✅ **Stage 1 complete** (Steps 1.1–1.5).
 
 ## Phase 2 — Preferences and config plumbing (Agent B)
 
