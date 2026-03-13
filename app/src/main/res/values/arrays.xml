@@ -172,6 +172,16 @@
         <item>1</item>
         <item>2</item>
     </string-array>
+    <string-array name="ambilight_quality_names">
+        <item>@string/ambilight_quality_low</item>
+        <item>@string/ambilight_quality_medium</item>
+        <item>@string/ambilight_quality_high</item>
+    </string-array>
+    <string-array name="ambilight_quality_values" translatable="false">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+    </string-array>
     <string-array name="mouse_mode_names">
         <item>@string/mouse_mode_multi_touch</item>
         <item>@string/mouse_mode_absolute_touch</item>
