@@ -49,6 +49,8 @@ This document is a **task board + execution guide** for multiple coding agents. 
 Add an ambient-light pass in GL renderer that samples stream colors near edges and renders a soft halo around content.
 
 ### Step 1.1: Add shader constants
+Status: ✅ Done on branch `work`.
+
 Files:
 - `app/src/main/java/com/limelight/utils/ShaderUtils.java`
 
