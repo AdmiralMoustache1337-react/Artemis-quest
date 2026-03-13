@@ -472,22 +472,31 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
         GLES20.glUniform1f(ambilightSaturationBoostHandle, ambilightSaturationBoost);
         GLES20.glUniform1f(ambilightEdgeWidthHandle, ambilightEdgeWidth);
 
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
-        GLES20.glDisable(GLES20.GL_BLEND);
     }
 
     private void drawBothEyes(int dualBubble3dProgram, float convergence, float shift) {
         int viewWidth = glSurfaceView.getWidth();
         int viewHeight = glSurfaceView.getHeight();
+        int halfWidth = viewWidth / 2;
+
+        int insetX = 0;
+        int insetY = 0;
+        if (ambilightEnabled) {
+            float insetPercent = Math.max(0.03f, Math.min(ambilightEdgeWidth * 0.5f, 0.08f));
+            insetX = Math.round(halfWidth * insetPercent);
+            insetY = Math.round(viewHeight * insetPercent);
+        }
+
+        int eyeWidth = Math.max(1, halfWidth - (insetX * 2));
+        int eyeHeight = Math.max(1, viewHeight - (insetY * 2));
 
         float parallax = getParallax() * 0.06f;
 
-        GLES20.glViewport(0, 0, viewWidth / 2, viewHeight);
+        GLES20.glViewport(insetX, insetY, eyeWidth, eyeHeight);
         drawEye(dualBubble3dProgram, -parallax, convergence, shift);
 
-        GLES20.glViewport(viewWidth / 2, 0, viewWidth / 2, viewHeight);
+        GLES20.glViewport(halfWidth + insetX, insetY, eyeWidth, eyeHeight);
         drawEye(dualBubble3dProgram, parallax, convergence, shift);
     }
 

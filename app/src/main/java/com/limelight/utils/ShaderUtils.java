@@ -211,7 +211,7 @@ public class ShaderUtils {
                     "uniform float u_saturationBoost;\n" +
                     "uniform float u_edgeWidth;\n" +
                     "\n" +
-                    "vec3 sampleEdgeColor() {\n" +
+                    "vec4 sampleEdgeColor() {\n" +
                     "    float edge = clamp(u_edgeWidth, 0.01, 0.35);\n" +
                     "    float spread = clamp(u_spread, 0.5, 3.0);\n" +
                     "\n" +
@@ -234,7 +234,9 @@ public class ShaderUtils {
                     "    float edgeFactorY = 1.0 - smoothstep(0.0, edge * spread, min(v_TexCoord.y, 1.0 - v_TexCoord.y));\n" +
                     "    float edgeFactor = max(edgeFactorX, edgeFactorY);\n" +
                     "\n" +
-                    "    return edgeColor * edgeFactor * clamp(u_intensity, 0.0, 1.0);\n" +
+                    "    float intensity = clamp(u_intensity, 0.0, 1.0);\n" +
+                    "    float alpha = clamp(edgeFactor * intensity, 0.0, 1.0);\n" +
+                    "    return vec4(edgeColor * alpha, alpha);\n" +
                     "}\n" +
                     "\n" +
                     "void main() {\n" +
@@ -243,6 +245,6 @@ public class ShaderUtils {
                     "        return;\n" +
                     "    }\n" +
                     "\n" +
-                    "    gl_FragColor = vec4(sampleEdgeColor(), 1.0);\n" +
+                    "    gl_FragColor = sampleEdgeColor();\n" +
                     "}\n";
 }
