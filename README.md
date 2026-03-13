@@ -71,7 +71,14 @@ The main repo had stayed silent for 5 months, with nobody actually responding to
 * Install Android Studio and the Android NDK
 * Run ‘git submodule update --init --recursive’ from within moonlight-android/
 * In moonlight-android/, create a file called ‘local.properties’. Add an ‘ndk.dir=’ property to the local.properties file and set it equal to your NDK directory.
-* Build the APK using Android Studio or gradle
+* Build the APK using Android Studio or gradle.
+
+### Release build
+* Use JDK 17 (`JAVA_HOME` should point to a Java 17 installation).
+* Ensure `local.properties` has valid `sdk.dir` and `ndk.dir` values.
+* Run `./scripts/build-release.sh` to generate release APKs and AABs.
+* Artifacts are created in `app/build/outputs/apk/` and `app/build/outputs/bundle/`.
+* To publish from GitHub automatically, push a tag like `v20.2.6`; the `Android Release` workflow will install SDK/NDK packages, build, and attach APK/AAB files to a GitHub Release.
 
 ## Authors
 
