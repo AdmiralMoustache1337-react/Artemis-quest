@@ -203,7 +203,7 @@ Tasks:
 ## Phase 5 — Optional improvements (post-MVP)
 - ✅ Add dynamic edge segmentation (top/left/right/bottom weighted colors in shader).
 - ✅ Add vignette blending model selectable by user.
-- ⏳ Add `MODE_2D` GL compositing path for full ambilight support in 2D.
+- ✅ Add `MODE_2D` GL compositing path for full ambilight support in 2D.
 - ✅ Add device-specific presets for Quest 2 / Quest 3.
 
 ---

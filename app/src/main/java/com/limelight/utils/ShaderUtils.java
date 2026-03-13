@@ -249,7 +249,7 @@ public class ShaderUtils {
                     "    float radial = length(v_TexCoord - vec2(0.5)) * 1.41421356;\n" +
                     "    float linearVignette = edgeFactor;\n" +
                     "    float smoothVignette = edgeFactor * edgeFactor * (3.0 - 2.0 * edgeFactor);\n" +
-                    "    float cinematicVignette = 1.0 - smoothstep(0.15, 0.95, radial);\n" +
+                    "    float cinematicVignette = smoothstep(0.15, 0.95, radial);\n" +
                     "    float vignette = smoothVignette;\n" +
                     "    if (u_vignetteMode < 0.5) {\n" +
                     "        vignette = linearVignette;\n" +

@@ -74,8 +74,7 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
         this.prefConfig = prefConfig;
         this.renderMode = mapIntToStreamMode(prefConfig.renderMode);
 
-        notifyAmbilightUnsupportedIfNeeded(prefConfig.enableAmbilight);
-
+        boolean useGlRenderer = renderMode != StreamMode.MODE_2D || prefConfig.enableAmbilight;
         Stereo3DRenderer.isMovieMode = renderMode == StreamMode.MODE_AI_3D_MOVIE;
 
         isSurfaceReady = false;
@@ -84,14 +83,15 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
         Context context = getContext();
         LayoutParams childParams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
 
-        // Always craete a surface view as a Workaround for the sizing issue of GLSurfaceView
+        // Always create a SurfaceView as workaround for GLSurfaceView sizing behavior.
         mSurfaceView = new SurfaceView(context);
         addView(mSurfaceView, childParams);
 
-        if (renderMode != StreamMode.MODE_2D) {
+        if (useGlRenderer) {
             GLSurfaceView glSurfaceView = new GLSurfaceView(context);
             glSurfaceView.setEGLContextClientVersion(3);
-            mStereoRenderer = new Stereo3DRenderer(glSurfaceView, this, context, prefConfig);
+            boolean stereo3dEnabled = renderMode != StreamMode.MODE_2D;
+            mStereoRenderer = new Stereo3DRenderer(glSurfaceView, this, context, prefConfig, stereo3dEnabled);
             mStereoRenderer.applyAmbilightPreferences(prefConfig, true);
             glSurfaceView.setRenderer(mStereoRenderer);
             glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
@@ -120,7 +120,7 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        if (renderMode != StreamMode.MODE_2D) {
+        if (mStereoRenderer != null || renderMode != StreamMode.MODE_2D) {
             super.onMeasure(widthMeasureSpec, heightMeasureSpec);
             return;
         }
@@ -246,7 +246,7 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
     }
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        if (renderMode == StreamMode.MODE_2D && width > 0 && height > 0) {
+        if (mStereoRenderer == null && renderMode == StreamMode.MODE_2D && width > 0 && height > 0) {
             mCurrentSurface = holder.getSurface();
             notifySurfaceReady();
         }
@@ -255,11 +255,11 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
     }
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
-        if (renderMode == StreamMode.MODE_2D) {
+        if (mStereoRenderer != null) {
+            mStereoRenderer.onSurfaceDestroyed();
+        } else if (renderMode == StreamMode.MODE_2D) {
             isSurfaceReady = false;
             mCurrentSurface = null;
-        } else if (mStereoRenderer != null) {
-            mStereoRenderer.onSurfaceDestroyed();
         }
 
         game.surfaceDestroyed(holder);
@@ -267,7 +267,7 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
 
     @Override
     public void onStereo3DSurfaceReady(Surface surface) {
-        if (renderMode != StreamMode.MODE_2D) {
+        if (mStereoRenderer != null || renderMode != StreamMode.MODE_2D) {
             mCurrentSurface = surface;
             notifySurfaceReady();
         }
@@ -280,14 +280,14 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
 
         prefConfig = updatedPrefConfig;
         if (mStereoRenderer != null) {
-            mStereoRenderer.applyAmbilightPreferences(updatedPrefConfig, renderMode != StreamMode.MODE_2D);
+            mStereoRenderer.applyAmbilightPreferences(updatedPrefConfig, true);
         } else {
             notifyAmbilightUnsupportedIfNeeded(prefConfig.enableAmbilight);
         }
     }
 
     private void notifyAmbilightUnsupportedIfNeeded(boolean ambilightRequested) {
-        if (renderMode == StreamMode.MODE_2D && ambilightRequested && !ambilightSupportNotified) {
+        if (renderMode == StreamMode.MODE_2D && mStereoRenderer == null && ambilightRequested && !ambilightSupportNotified) {
             LimeLog.info("Ambilight is enabled in preferences but unavailable in 2D mode; disabling for this session.");
             Toast.makeText(getContext(), R.string.toast_ambilight_disabled_2d, Toast.LENGTH_LONG).show();
             ambilightSupportNotified = true;

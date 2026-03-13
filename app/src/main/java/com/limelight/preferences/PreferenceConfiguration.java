@@ -913,24 +913,30 @@ private static int getFramePacingValue(Context context) {
         config.renderMode = renderModeInt;
 
         config.enableAmbilight = prefs.getBoolean(ENABLE_AMBILIGHT_PREF_STRING, DEFAULT_ENABLE_AMBILIGHT);
-        config.ambilightIntensity = prefs.getInt(AMBILIGHT_INTENSITY_PREF_STRING, DEFAULT_AMBILIGHT_INTENSITY) / 100f;
-        config.ambilightSpread = prefs.getInt(AMBILIGHT_SPREAD_PREF_STRING, DEFAULT_AMBILIGHT_SPREAD) / 100f;
-        config.ambilightSmoothing = prefs.getInt(AMBILIGHT_SMOOTHING_PREF_STRING, DEFAULT_AMBILIGHT_SMOOTHING) / 100f;
+        int ambilightIntensityRaw = prefs.getInt(AMBILIGHT_INTENSITY_PREF_STRING, DEFAULT_AMBILIGHT_INTENSITY);
+        int ambilightSpreadRaw = prefs.getInt(AMBILIGHT_SPREAD_PREF_STRING, DEFAULT_AMBILIGHT_SPREAD);
+        int ambilightSmoothingRaw = prefs.getInt(AMBILIGHT_SMOOTHING_PREF_STRING, DEFAULT_AMBILIGHT_SMOOTHING);
+        config.ambilightIntensity = Math.max(0, Math.min(ambilightIntensityRaw, 100)) / 100f;
+        config.ambilightSpread = Math.max(0, Math.min(ambilightSpreadRaw, 100)) / 100f;
+        config.ambilightSmoothing = Math.max(0, Math.min(ambilightSmoothingRaw, 100)) / 100f;
         try {
-            config.ambilightQuality = Integer.parseInt(
+            int parsedQuality = Integer.parseInt(
                     prefs.getString(AMBILIGHT_QUALITY_PREF_STRING, DEFAULT_AMBILIGHT_QUALITY));
+            config.ambilightQuality = Math.max(0, Math.min(parsedQuality, 2));
         } catch (Exception e) {
             config.ambilightQuality = Integer.parseInt(DEFAULT_AMBILIGHT_QUALITY);
         }
         try {
-            config.ambilightVignetteMode = Integer.parseInt(
+            int parsedVignetteMode = Integer.parseInt(
                     prefs.getString(AMBILIGHT_VIGNETTE_MODE_PREF_STRING, DEFAULT_AMBILIGHT_VIGNETTE_MODE));
+            config.ambilightVignetteMode = Math.max(0, Math.min(parsedVignetteMode, 2));
         } catch (Exception e) {
             config.ambilightVignetteMode = Integer.parseInt(DEFAULT_AMBILIGHT_VIGNETTE_MODE);
         }
         try {
-            config.ambilightDevicePreset = Integer.parseInt(
+            int parsedDevicePreset = Integer.parseInt(
                     prefs.getString(AMBILIGHT_DEVICE_PRESET_PREF_STRING, DEFAULT_AMBILIGHT_DEVICE_PRESET));
+            config.ambilightDevicePreset = Math.max(0, Math.min(parsedDevicePreset, 2));
         } catch (Exception e) {
             config.ambilightDevicePreset = Integer.parseInt(DEFAULT_AMBILIGHT_DEVICE_PRESET);
         }
