@@ -53,9 +53,7 @@ jobs:
           BUILD_TOOLS_DIR="$(find "$ANDROID_SDK_ROOT/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
           APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
 
-          shopt -s globstar nullglob
-          release_apks=(app/build/outputs/**/*.apk)
-          shopt -u globstar nullglob
+          mapfile -t release_apks < <(find app/build/outputs/apk -type f -path '*/release/*.apk' | sort)
 
           found_apk=0
           signed_any=0
@@ -88,14 +86,7 @@ jobs:
           done
 
           if [ "$found_apk" -eq 0 ]; then
-            echo "No APK found under app/build/outputs" >&2
-            echo "Directory snapshot for debugging:" >&2
-            if [ -d app/build ]; then
-              find app/build -maxdepth 6 -type d | sort >&2 || true
-              find app/build -maxdepth 8 -type f | sort >&2 || true
-            else
-              echo "app/build directory does not exist" >&2
-            fi
+            echo "No APK found in release output directories" >&2
             exit 1
           fi
 
@@ -108,11 +99,11 @@ jobs:
         with:
           name: artemis-quest-nonroot-arm64-release
           path: |
-            app/build/outputs/**/*.apk
+            app/build/outputs/apk/*/release/*.apk
 
       - name: Publish GitHub Release assets
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            app/build/outputs/**/*.apk
+            app/build/outputs/apk/*/release/*.apk
