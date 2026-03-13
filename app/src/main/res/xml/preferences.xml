@@ -217,6 +217,62 @@
             android:summary="@string/summary_fullexdisplay_mode"
             android:title="@string/title_fullexdisplay_mode"
             app:iconSpaceReserved="false" />
+
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="checkbox_enable_ambilight"
+            android:summary="@string/summary_enable_ambilight"
+            android:title="@string/title_enable_ambilight"
+            app:iconSpaceReserved="false" />
+
+        <com.limelight.preferences.SeekBarPreference
+            android:defaultValue="22"
+            android:dialogMessage=""
+            android:key="ambilight_intensity"
+            android:dependency="checkbox_enable_ambilight"
+            android:max="100"
+            android:summary="@string/summary_ambilight_intensity"
+            android:text="%"
+            android:title="@string/title_ambilight_intensity"
+            app:iconSpaceReserved="false"
+            seekbar:min="0"
+            seekbar:step="1" />
+
+        <com.limelight.preferences.SeekBarPreference
+            android:defaultValue="35"
+            android:dialogMessage=""
+            android:key="ambilight_spread"
+            android:dependency="checkbox_enable_ambilight"
+            android:max="100"
+            android:summary="@string/summary_ambilight_spread"
+            android:text="%"
+            android:title="@string/title_ambilight_spread"
+            app:iconSpaceReserved="false"
+            seekbar:min="0"
+            seekbar:step="1" />
+
+        <com.limelight.preferences.SeekBarPreference
+            android:defaultValue="65"
+            android:dialogMessage=""
+            android:key="ambilight_smoothing"
+            android:dependency="checkbox_enable_ambilight"
+            android:max="100"
+            android:summary="@string/summary_ambilight_smoothing"
+            android:text="%"
+            android:title="@string/title_ambilight_smoothing"
+            app:iconSpaceReserved="false"
+            seekbar:min="0"
+            seekbar:step="1" />
+
+        <ListPreference
+            android:defaultValue="1"
+            android:entries="@array/ambilight_quality_names"
+            android:entryValues="@array/ambilight_quality_values"
+            android:key="ambilight_quality"
+            android:dependency="checkbox_enable_ambilight"
+            android:summary="@string/summary_ambilight_quality"
+            android:title="@string/title_ambilight_quality"
+            app:iconSpaceReserved="false" />
     </PreferenceCategory>
 
     <PreferenceCategory

@@ -68,6 +68,11 @@ public class PreferenceConfiguration {
     private static final String SHOW_GUIDE_BUTTON_PREF_STRING = "checkbox_show_guide_button";
     private static final String LEGACY_DISABLE_FRAME_DROP_PREF_STRING = "checkbox_disable_frame_drop";
     private static final String ENABLE_HDR_PREF_STRING = "checkbox_enable_hdr";
+    private static final String ENABLE_AMBILIGHT_PREF_STRING = "checkbox_enable_ambilight";
+    private static final String AMBILIGHT_INTENSITY_PREF_STRING = "ambilight_intensity";
+    private static final String AMBILIGHT_SPREAD_PREF_STRING = "ambilight_spread";
+    private static final String AMBILIGHT_SMOOTHING_PREF_STRING = "ambilight_smoothing";
+    private static final String AMBILIGHT_QUALITY_PREF_STRING = "ambilight_quality";
     private static final String ENABLE_PIP_PREF_STRING = "checkbox_enable_pip";
     private static final String ENABLE_PERF_OVERLAY_STRING = "checkbox_enable_perf_overlay";
     private static final String ENABLE_PERF_LOGGING = "checkbox_enable_perf_logging";
@@ -162,6 +167,11 @@ public class PreferenceConfiguration {
     private static final boolean ONLY_L3_R3_DEFAULT = false;
     private static final boolean SHOW_GUIDE_BUTTON_DEFAULT = true;
     private static final boolean DEFAULT_ENABLE_HDR = false;
+    private static final boolean DEFAULT_ENABLE_AMBILIGHT = true;
+    private static final int DEFAULT_AMBILIGHT_INTENSITY = 22;
+    private static final int DEFAULT_AMBILIGHT_SPREAD = 35;
+    private static final int DEFAULT_AMBILIGHT_SMOOTHING = 65;
+    private static final String DEFAULT_AMBILIGHT_QUALITY = "1";
     private static final boolean DEFAULT_ENABLE_PIP = false;
     private static final boolean DEFAULT_ENABLE_PERF_OVERLAY = false;
     private static final boolean DEFAULT_PERF_OVERLAY_BOTTOM = false;
@@ -248,6 +258,11 @@ public class PreferenceConfiguration {
     public ScaleMode videoScaleMode;
     public String language;
     public int renderMode;
+    public boolean enableAmbilight;
+    public float ambilightIntensity;
+    public float ambilightSpread;
+    public float ambilightSmoothing;
+    public int ambilightQuality;
     public boolean smallIconMode, multiController, usbDriver, flipFaceButtons;
     public boolean onscreenController;
     public boolean hideOSCWhenHasGamepad;
@@ -890,6 +905,12 @@ private static int getFramePacingValue(Context context) {
         String renderMode = prefs.getString("render_mode_list", "0");
         int renderModeInt = Integer.parseInt(renderMode);
         config.renderMode = renderModeInt;
+
+        config.enableAmbilight = prefs.getBoolean(ENABLE_AMBILIGHT_PREF_STRING, DEFAULT_ENABLE_AMBILIGHT);
+        config.ambilightIntensity = prefs.getInt(AMBILIGHT_INTENSITY_PREF_STRING, DEFAULT_AMBILIGHT_INTENSITY) / 100f;
+        config.ambilightSpread = prefs.getInt(AMBILIGHT_SPREAD_PREF_STRING, DEFAULT_AMBILIGHT_SPREAD) / 100f;
+        config.ambilightSmoothing = prefs.getInt(AMBILIGHT_SMOOTHING_PREF_STRING, DEFAULT_AMBILIGHT_SMOOTHING) / 100f;
+        config.ambilightQuality = Integer.parseInt(prefs.getString(AMBILIGHT_QUALITY_PREF_STRING, DEFAULT_AMBILIGHT_QUALITY));
 
         // Read mouse mode and set touch settings accordingly
         String mouseMode = prefs.getString("mouse_mode_list", "0");

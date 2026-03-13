@@ -500,6 +500,20 @@
     <string name="summary_free_analog_stick_opacity">By default, only when the stick moves, the background is displayed. If you don\'t like it, you can adjust the opacity effect.</string>
     <string name="title_free_analog_stick_opacity">Free Analog Stick Background Opacity</string>
     <string name="title_exdisplay_mode">External Display Mode (Beta)</string>
+
+    <string name="title_enable_ambilight">Enable Ambilight (Experimental)</string>
+    <string name="summary_enable_ambilight">Adds a subtle ambient glow around the stream edges in GL render modes. Not supported in 2D render mode.</string>
+    <string name="title_ambilight_intensity">Ambilight Intensity</string>
+    <string name="summary_ambilight_intensity">Controls how bright the edge glow appears.</string>
+    <string name="title_ambilight_spread">Ambilight Spread</string>
+    <string name="summary_ambilight_spread">Controls how far the glow extends inward from the edges.</string>
+    <string name="title_ambilight_smoothing">Ambilight Smoothing</string>
+    <string name="summary_ambilight_smoothing">Smooths color transitions to reduce flicker during rapid scene changes.</string>
+    <string name="title_ambilight_quality">Ambilight Quality</string>
+    <string name="summary_ambilight_quality">Higher quality improves fidelity but may increase GPU load on Quest devices.</string>
+    <string name="ambilight_quality_low">Low</string>
+    <string name="ambilight_quality_medium">Medium</string>
+    <string name="ambilight_quality_high">High</string>
     <string name="title_fullexdisplay_mode">Fully External Display Mode (Beta)</string>
     <string name="summary_exdisplay_mode">Stream display on the monitor, virtual buttons and performance information and other controls on the phone screen.</string>
     <string name="summary_fullexdisplay_mode">Allows full immersive secondary screen mode with automatically matched refresh rate and resolution. Manual settings won\'t apply in this mode.</string>
