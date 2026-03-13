@@ -88,6 +88,7 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
 
     // Final Member Variables
     private final Context context;
+    private final boolean stereo3dEnabled;
     private final GLSurfaceView glSurfaceView;
     private final OnSurfaceReadyListener onSurfaceReadyListener;
     private final Object frameLock = new Object();
@@ -176,11 +177,12 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
         }
     }
 
-    public Stereo3DRenderer(GLSurfaceView view, OnSurfaceReadyListener listener, Context context, PreferenceConfiguration prefConfig) {
+    public Stereo3DRenderer(GLSurfaceView view, OnSurfaceReadyListener listener, Context context, PreferenceConfiguration prefConfig, boolean stereo3dEnabled) {
         this.glSurfaceView = view;
         this.onSurfaceReadyListener = listener;
         this.context = context;
         this.prefConfig = prefConfig;
+        this.stereo3dEnabled = stereo3dEnabled;
 
         quadVertexBuffer = ByteBuffer.allocateDirect(QUAD_VERTICES.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
         quadVertexBuffer.put(QUAD_VERTICES).position(0);
@@ -286,39 +288,41 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
         cacheAmbilightHandles();
         initializeAmbilightConfig();
 
-        initializeFilterFbo();
-        initializeIntermediateFbo();
-        initializeTfLite();
-        initializeFbo();
-        initBuffer();
-        initializePBOs();
+        if (stereo3dEnabled) {
+            initializeFilterFbo();
+            initializeIntermediateFbo();
+            initializeTfLite();
+            initializeFbo();
+            initBuffer();
+            initializePBOs();
 
-        int mapSize = modelInputWidth * modelInputHeight;
-        freeSmoothedBuffers = new ArrayBlockingQueue<>(NUM_SMOOTHED_BUFFERS);
-        for (int i = 0; i < NUM_SMOOTHED_BUFFERS; i++) {
-            freeSmoothedBuffers.offer(ByteBuffer.allocateDirect(mapSize).order(ByteOrder.nativeOrder()));
+            int mapSize = modelInputWidth * modelInputHeight;
+            freeSmoothedBuffers = new ArrayBlockingQueue<>(NUM_SMOOTHED_BUFFERS);
+            for (int i = 0; i < NUM_SMOOTHED_BUFFERS; i++) {
+                freeSmoothedBuffers.offer(ByteBuffer.allocateDirect(mapSize).order(ByteOrder.nativeOrder()));
+            }
+
+            int pboSize = modelInputWidth * modelInputHeight * 4;
+            previousPixelBuffer = ByteBuffer.allocateDirect(pboSize).order(ByteOrder.nativeOrder());
+            previousFrameForComparison = ByteBuffer.allocateDirect(pboSize).order(ByteOrder.nativeOrder());
+            int inputPixelSize = modelInputWidth * modelInputHeight * 4;
+            freeInputBuffers = new ArrayBlockingQueue<>(NUM_INPUT_BUFFERS);
+            inferenceInputQueue = new ArrayBlockingQueue<>(1);
+            for (int i = 0; i < NUM_INPUT_BUFFERS; i++) {
+                freeInputBuffers.offer(ByteBuffer.allocateDirect(inputPixelSize).order(ByteOrder.nativeOrder()));
+            }
+
+            executorService = Executors.newFixedThreadPool(2);
         }
-
-        int pboSize = modelInputWidth * modelInputHeight * 4;
-        previousPixelBuffer = ByteBuffer.allocateDirect(pboSize).order(ByteOrder.nativeOrder());
-        previousFrameForComparison = ByteBuffer.allocateDirect(pboSize).order(ByteOrder.nativeOrder());
-        int inputPixelSize = modelInputWidth * modelInputHeight * 4;
-        freeInputBuffers = new ArrayBlockingQueue<>(NUM_INPUT_BUFFERS);
-        inferenceInputQueue = new ArrayBlockingQueue<>(1);
-        for (int i = 0; i < NUM_INPUT_BUFFERS; i++) {
-            freeInputBuffers.offer(ByteBuffer.allocateDirect(inputPixelSize).order(ByteOrder.nativeOrder()));
-        }
-
-        executorService = Executors.newFixedThreadPool(2);
 
         if (onSurfaceReadyListener != null) {
             onSurfaceReadyListener.onStereo3DSurfaceReady(videoSurface);
         }
-        if (!isAiResultHandlingRunning.get()) {
+        if (stereo3dEnabled && !isAiResultHandlingRunning.get()) {
             isAiResultHandlingRunning.set(true);
             executorService.submit(new AiResultHandling());
         }
-        if (!isAiRunning.get()) {
+        if (stereo3dEnabled && !isAiRunning.get()) {
             isAiRunning.set(true);
             executorService.submit(new AiTask());
         }
@@ -615,9 +619,29 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
     }
 
     private void drawWithShader() {
-        if (prefConfig != null) {
-            drawBothEyes(dibr3dProgram, prefConfig.convergence_ratio, prefConfig.balance_shift);
+        if (prefConfig == null) {
+            return;
         }
+
+        if (stereo3dEnabled) {
+            drawBothEyes(dibr3dProgram, prefConfig.convergence_ratio, prefConfig.balance_shift);
+            return;
+        }
+
+        int viewWidth = glSurfaceView.getWidth();
+        int viewHeight = glSurfaceView.getHeight();
+        int insetX = 0;
+        int insetY = 0;
+        if (ambilightEnabled) {
+            float insetPercent = Math.max(0.03f, Math.min(ambilightEdgeWidth * 0.5f, 0.08f));
+            insetX = Math.round(viewWidth * insetPercent);
+            insetY = Math.round(viewHeight * insetPercent);
+        }
+
+        int width = Math.max(1, viewWidth - (insetX * 2));
+        int height = Math.max(1, viewHeight - (insetY * 2));
+        GLES20.glViewport(insetX, insetY, width, height);
+        drawQuad(simple3dProgram, 1.0f, 0.0f);
     }
 
     private void initBuffer() {
@@ -656,6 +680,17 @@ public class Stereo3DRenderer implements GLSurfaceView.Renderer, SurfaceTexture.
             videoSurfaceTexture.updateTexImage();
         } catch (Exception e) {
             Log.w("Stereo3DRenderer", "updateTexImagse failed", e);
+            return;
+        }
+
+        if (!stereo3dEnabled) {
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+            long nowNs = System.nanoTime();
+            long frameTime = lastFrameRenderTimeNs == 0L ? 16_666_666L : (nowNs - lastFrameRenderTimeNs);
+            lastFrameRenderTimeNs = nowNs;
+            updateAmbilightQualityAndSmoothing(frameTime);
+            drawAmbilightPass();
+            drawWithShader();
             return;
         }
 

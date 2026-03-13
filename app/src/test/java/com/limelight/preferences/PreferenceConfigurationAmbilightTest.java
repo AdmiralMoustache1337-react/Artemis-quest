@@ -74,6 +74,28 @@ public class PreferenceConfigurationAmbilightTest {
         assertEquals(1, config.ambilightDevicePreset);
     }
 
+
+    @Test
+    public void readPreferences_clampsOutOfRangeAmbilightValues() {
+        prefs.edit()
+                .putInt("ambilight_intensity", 180)
+                .putInt("ambilight_spread", -25)
+                .putInt("ambilight_smoothing", 500)
+                .putString("ambilight_quality", "99")
+                .putString("ambilight_vignette_mode", "-1")
+                .putString("ambilight_device_preset", "7")
+                .commit();
+
+        PreferenceConfiguration config = PreferenceConfiguration.readPreferences(context);
+
+        assertEquals(1.0f, config.ambilightIntensity, 0.0001f);
+        assertEquals(0.0f, config.ambilightSpread, 0.0001f);
+        assertEquals(1.0f, config.ambilightSmoothing, 0.0001f);
+        assertEquals(2, config.ambilightQuality);
+        assertEquals(0, config.ambilightVignetteMode);
+        assertEquals(2, config.ambilightDevicePreset);
+    }
+
     @Test
     public void readPreferences_fallsBackOnInvalidAmbilightQuality() {
         prefs.edit()
