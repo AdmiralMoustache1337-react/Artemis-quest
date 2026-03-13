@@ -199,4 +199,75 @@ public class ShaderUtils {
                     "void main() {\n" +
                     "    gl_FragColor = texture2D(u_Texture, v_TexCoord);\n" +
                     "}\n";
+
+    public static final String AMBILIGHT_FRAGMENT_SHADER =
+            "#extension GL_OES_EGL_image_external : require\n" +
+                    "precision mediump float;\n" +
+                    "varying vec2 v_TexCoord;\n" +
+                    "uniform samplerExternalOES u_Texture;\n" +
+                    "uniform bool u_ambilightEnabled;\n" +
+                    "uniform float u_intensity;\n" +
+                    "uniform float u_spread;\n" +
+                    "uniform float u_saturationBoost;\n" +
+                    "uniform float u_edgeWidth;\n" +
+                    "uniform float u_vignetteMode;\n" +
+                    "\n" +
+                    "vec4 sampleEdgeColor() {\n" +
+                    "    float edge = clamp(u_edgeWidth, 0.01, 0.35);\n" +
+                    "    float spread = clamp(u_spread, 0.5, 3.0);\n" +
+                    "\n" +
+                    "    vec2 uvTop = vec2(v_TexCoord.x, edge);\n" +
+                    "    vec2 uvBottom = vec2(v_TexCoord.x, 1.0 - edge);\n" +
+                    "    vec2 uvLeft = vec2(edge, v_TexCoord.y);\n" +
+                    "    vec2 uvRight = vec2(1.0 - edge, v_TexCoord.y);\n" +
+                    "\n" +
+                    "    vec3 topColor = texture2D(u_Texture, uvTop).rgb;\n" +
+                    "    vec3 bottomColor = texture2D(u_Texture, uvBottom).rgb;\n" +
+                    "    vec3 leftColor = texture2D(u_Texture, uvLeft).rgb;\n" +
+                    "    vec3 rightColor = texture2D(u_Texture, uvRight).rgb;\n" +
+                    "\n" +
+                    "    float topWeight = 1.0 - smoothstep(0.0, edge * spread, v_TexCoord.y);\n" +
+                    "    float bottomWeight = 1.0 - smoothstep(0.0, edge * spread, 1.0 - v_TexCoord.y);\n" +
+                    "    float leftWeight = 1.0 - smoothstep(0.0, edge * spread, v_TexCoord.x);\n" +
+                    "    float rightWeight = 1.0 - smoothstep(0.0, edge * spread, 1.0 - v_TexCoord.x);\n" +
+                    "\n" +
+                    "    float weightSum = max(0.0001, topWeight + bottomWeight + leftWeight + rightWeight);\n" +
+                    "    vec3 edgeColor = (\n" +
+                    "            topColor * topWeight +\n" +
+                    "            bottomColor * bottomWeight +\n" +
+                    "            leftColor * leftWeight +\n" +
+                    "            rightColor * rightWeight\n" +
+                    "    ) / weightSum;\n" +
+                    "\n" +
+                    "    float luma = dot(edgeColor, vec3(0.2126, 0.7152, 0.0722));\n" +
+                    "    edgeColor = mix(vec3(luma), edgeColor, 1.0 + clamp(u_saturationBoost, 0.0, 1.5));\n" +
+                    "\n" +
+                    "    float edgeFactorX = max(leftWeight, rightWeight);\n" +
+                    "    float edgeFactorY = max(topWeight, bottomWeight);\n" +
+                    "    float edgeFactor = max(edgeFactorX, edgeFactorY);\n" +
+                    "\n" +
+                    "    float radial = length(v_TexCoord - vec2(0.5)) * 1.41421356;\n" +
+                    "    float linearVignette = edgeFactor;\n" +
+                    "    float smoothVignette = edgeFactor * edgeFactor * (3.0 - 2.0 * edgeFactor);\n" +
+                    "    float cinematicVignette = smoothstep(0.15, 0.95, radial);\n" +
+                    "    float vignette = smoothVignette;\n" +
+                    "    if (u_vignetteMode < 0.5) {\n" +
+                    "        vignette = linearVignette;\n" +
+                    "    } else if (u_vignetteMode > 1.5) {\n" +
+                    "        vignette = cinematicVignette;\n" +
+                    "    }\n" +
+                    "\n" +
+                    "    float intensity = clamp(u_intensity, 0.0, 1.0);\n" +
+                    "    float alpha = clamp(vignette * intensity, 0.0, 1.0);\n" +
+                    "    return vec4(edgeColor * alpha, alpha);\n" +
+                    "}\n" +
+                    "\n" +
+                    "void main() {\n" +
+                    "    if (!u_ambilightEnabled) {\n" +
+                    "        gl_FragColor = vec4(0.0);\n" +
+                    "        return;\n" +
+                    "    }\n" +
+                    "\n" +
+                    "    gl_FragColor = sampleEdgeColor();\n" +
+                    "}\n";
 }

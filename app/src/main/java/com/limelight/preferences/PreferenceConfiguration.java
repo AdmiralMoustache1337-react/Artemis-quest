@@ -68,6 +68,13 @@ public class PreferenceConfiguration {
     private static final String SHOW_GUIDE_BUTTON_PREF_STRING = "checkbox_show_guide_button";
     private static final String LEGACY_DISABLE_FRAME_DROP_PREF_STRING = "checkbox_disable_frame_drop";
     private static final String ENABLE_HDR_PREF_STRING = "checkbox_enable_hdr";
+    private static final String ENABLE_AMBILIGHT_PREF_STRING = "checkbox_enable_ambilight";
+    private static final String AMBILIGHT_INTENSITY_PREF_STRING = "ambilight_intensity";
+    private static final String AMBILIGHT_SPREAD_PREF_STRING = "ambilight_spread";
+    private static final String AMBILIGHT_SMOOTHING_PREF_STRING = "ambilight_smoothing";
+    private static final String AMBILIGHT_QUALITY_PREF_STRING = "ambilight_quality";
+    private static final String AMBILIGHT_VIGNETTE_MODE_PREF_STRING = "ambilight_vignette_mode";
+    private static final String AMBILIGHT_DEVICE_PRESET_PREF_STRING = "ambilight_device_preset";
     private static final String ENABLE_PIP_PREF_STRING = "checkbox_enable_pip";
     private static final String ENABLE_PERF_OVERLAY_STRING = "checkbox_enable_perf_overlay";
     private static final String ENABLE_PERF_LOGGING = "checkbox_enable_perf_logging";
@@ -162,6 +169,13 @@ public class PreferenceConfiguration {
     private static final boolean ONLY_L3_R3_DEFAULT = false;
     private static final boolean SHOW_GUIDE_BUTTON_DEFAULT = true;
     private static final boolean DEFAULT_ENABLE_HDR = false;
+    private static final boolean DEFAULT_ENABLE_AMBILIGHT = true;
+    private static final int DEFAULT_AMBILIGHT_INTENSITY = 22;
+    private static final int DEFAULT_AMBILIGHT_SPREAD = 35;
+    private static final int DEFAULT_AMBILIGHT_SMOOTHING = 65;
+    private static final String DEFAULT_AMBILIGHT_QUALITY = "1";
+    private static final String DEFAULT_AMBILIGHT_VIGNETTE_MODE = "1";
+    private static final String DEFAULT_AMBILIGHT_DEVICE_PRESET = "0";
     private static final boolean DEFAULT_ENABLE_PIP = false;
     private static final boolean DEFAULT_ENABLE_PERF_OVERLAY = false;
     private static final boolean DEFAULT_PERF_OVERLAY_BOTTOM = false;
@@ -248,6 +262,13 @@ public class PreferenceConfiguration {
     public ScaleMode videoScaleMode;
     public String language;
     public int renderMode;
+    public boolean enableAmbilight;
+    public float ambilightIntensity;
+    public float ambilightSpread;
+    public float ambilightSmoothing;
+    public int ambilightQuality;
+    public int ambilightVignetteMode;
+    public int ambilightDevicePreset;
     public boolean smallIconMode, multiController, usbDriver, flipFaceButtons;
     public boolean onscreenController;
     public boolean hideOSCWhenHasGamepad;
@@ -890,6 +911,35 @@ private static int getFramePacingValue(Context context) {
         String renderMode = prefs.getString("render_mode_list", "0");
         int renderModeInt = Integer.parseInt(renderMode);
         config.renderMode = renderModeInt;
+
+        config.enableAmbilight = prefs.getBoolean(ENABLE_AMBILIGHT_PREF_STRING, DEFAULT_ENABLE_AMBILIGHT);
+        int ambilightIntensityRaw = prefs.getInt(AMBILIGHT_INTENSITY_PREF_STRING, DEFAULT_AMBILIGHT_INTENSITY);
+        int ambilightSpreadRaw = prefs.getInt(AMBILIGHT_SPREAD_PREF_STRING, DEFAULT_AMBILIGHT_SPREAD);
+        int ambilightSmoothingRaw = prefs.getInt(AMBILIGHT_SMOOTHING_PREF_STRING, DEFAULT_AMBILIGHT_SMOOTHING);
+        config.ambilightIntensity = Math.max(0, Math.min(ambilightIntensityRaw, 100)) / 100f;
+        config.ambilightSpread = Math.max(0, Math.min(ambilightSpreadRaw, 100)) / 100f;
+        config.ambilightSmoothing = Math.max(0, Math.min(ambilightSmoothingRaw, 100)) / 100f;
+        try {
+            int parsedQuality = Integer.parseInt(
+                    prefs.getString(AMBILIGHT_QUALITY_PREF_STRING, DEFAULT_AMBILIGHT_QUALITY));
+            config.ambilightQuality = Math.max(0, Math.min(parsedQuality, 2));
+        } catch (Exception e) {
+            config.ambilightQuality = Integer.parseInt(DEFAULT_AMBILIGHT_QUALITY);
+        }
+        try {
+            int parsedVignetteMode = Integer.parseInt(
+                    prefs.getString(AMBILIGHT_VIGNETTE_MODE_PREF_STRING, DEFAULT_AMBILIGHT_VIGNETTE_MODE));
+            config.ambilightVignetteMode = Math.max(0, Math.min(parsedVignetteMode, 2));
+        } catch (Exception e) {
+            config.ambilightVignetteMode = Integer.parseInt(DEFAULT_AMBILIGHT_VIGNETTE_MODE);
+        }
+        try {
+            int parsedDevicePreset = Integer.parseInt(
+                    prefs.getString(AMBILIGHT_DEVICE_PRESET_PREF_STRING, DEFAULT_AMBILIGHT_DEVICE_PRESET));
+            config.ambilightDevicePreset = Math.max(0, Math.min(parsedDevicePreset, 2));
+        } catch (Exception e) {
+            config.ambilightDevicePreset = Integer.parseInt(DEFAULT_AMBILIGHT_DEVICE_PRESET);
+        }
 
         // Read mouse mode and set touch settings accordingly
         String mouseMode = prefs.getString("mouse_mode_list", "0");
