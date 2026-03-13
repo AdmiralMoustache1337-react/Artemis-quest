@@ -503,6 +503,7 @@
 
     <string name="title_enable_ambilight">Enable Ambilight (Experimental)</string>
     <string name="summary_enable_ambilight">Adds a subtle ambient glow around the stream edges in GL render modes. Not supported in 2D render mode.</string>
+    <string name="toast_ambilight_disabled_2d">Ambilight is only available in 3D GL render modes and has been disabled for this 2D session.</string>
     <string name="title_ambilight_intensity">Ambilight Intensity</string>
     <string name="summary_ambilight_intensity">Controls how bright the edge glow appears.</string>
     <string name="title_ambilight_spread">Ambilight Spread</string>
