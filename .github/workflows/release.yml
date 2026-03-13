@@ -35,21 +35,55 @@ jobs:
         run: |
           echo "ndk.dir=${ANDROID_SDK_ROOT}/ndk/27.0.12077973" > local.properties
 
-      - name: Build release artifacts
-        run: ./gradlew clean assembleRelease bundleRelease
+      - name: Build Quest release APK (nonRoot_game arm64-v8a)
+        run: ./gradlew clean :app:assembleNonRoot_gameRelease -Pandroid.injected.build.abi=arm64-v8a
+
+      - name: Sign release APK for sideload installation
+        run: |
+          keytool -genkeypair \
+            -keystore release-keystore.jks \
+            -storepass android \
+            -keypass android \
+            -alias artemis \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Artemis Quest, OU=CI, O=Artemis, L=NA, S=NA, C=US"
+
+          BUILD_TOOLS_DIR="$(find "$ANDROID_SDK_ROOT/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+          APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
+
+          found_unsigned=0
+          for apk in app/build/outputs/apk/nonRoot_game/release/*unsigned.apk; do
+            [ -f "$apk" ] || continue
+            found_unsigned=1
+            signed_apk="${apk%-unsigned.apk}.apk"
+            "$APKSIGNER" sign \
+              --ks release-keystore.jks \
+              --ks-key-alias artemis \
+              --ks-pass pass:android \
+              --key-pass pass:android \
+              --out "$signed_apk" \
+              "$apk"
+            "$APKSIGNER" verify "$signed_apk"
+            rm -f "$apk"
+          done
+
+          if [ "$found_unsigned" -eq 0 ]; then
+            echo "No unsigned APK found to sign" >&2
+            exit 1
+          fi
 
       - name: Upload artifacts to workflow run
         uses: actions/upload-artifact@v4
         with:
-          name: android-release-artifacts
+          name: artemis-quest-nonroot-arm64-release
           path: |
-            app/build/outputs/apk/**/*.apk
-            app/build/outputs/bundle/**/*.aab
+            app/build/outputs/apk/nonRoot_game/release/*.apk
 
       - name: Publish GitHub Release assets
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            app/build/outputs/apk/**/*.apk
-            app/build/outputs/bundle/**/*.aab
+            app/build/outputs/apk/nonRoot_game/release/*.apk
