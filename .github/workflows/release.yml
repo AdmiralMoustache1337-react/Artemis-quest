@@ -40,6 +40,8 @@ jobs:
 
       - name: Sign release APK for sideload installation
         run: |
+          set -euo pipefail
+
           keytool -genkeypair \
             -keystore release-keystore.jks \
             -storepass android \
@@ -53,22 +55,40 @@ jobs:
           BUILD_TOOLS_DIR="$(find "$ANDROID_SDK_ROOT/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
           APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
 
-          mapfile -t release_apks < <(find app/build/outputs/apk -type f -path '*/release/*.apk' | sort)
+          rm -rf release-apks
+          mkdir -p release-apks
 
-          found_apk=0
+          if [ ! -d app/build/outputs ]; then
+            echo "app/build/outputs was not created by Gradle. Build likely failed to generate APK artifacts." >&2
+            exit 1
+          fi
+
+          mapfile -t release_apks < <(find app/build/outputs -type f -name '*.apk' \
+            \( -path '*/release/*' -o -path '*/apk/*' -o -path '*/outputs/*' \) | sort)
+
+          if [ "${#release_apks[@]}" -eq 0 ]; then
+            echo "No APK found in app/build/outputs. Available output folders:" >&2
+            find app/build/outputs -maxdepth 3 -type d -print >&2 || true
+            exit 1
+          fi
+
           signed_any=0
           for apk in "${release_apks[@]}"; do
-            found_apk=1
+            base_apk_name="$(basename "$apk")"
+            final_apk="release-apks/$base_apk_name"
 
             if "$APKSIGNER" verify "$apk" >/dev/null 2>&1; then
               echo "Already signed: $apk"
+              cp -f "$apk" "$final_apk"
               continue
             fi
 
             signed_any=1
             signed_apk="$apk"
+            target_apk="$final_apk"
             if [[ "$apk" == *-unsigned.apk ]]; then
               signed_apk="${apk%-unsigned.apk}.apk"
+              target_apk="release-apks/$(basename "$signed_apk")"
             fi
 
             "$APKSIGNER" sign \
@@ -76,34 +96,33 @@ jobs:
               --ks-key-alias artemis \
               --ks-pass pass:android \
               --key-pass pass:android \
-              --out "$signed_apk" \
+              --out "$target_apk" \
               "$apk"
-            "$APKSIGNER" verify "$signed_apk"
-
-            if [ "$signed_apk" != "$apk" ]; then
-              rm -f "$apk"
-            fi
+            "$APKSIGNER" verify "$target_apk"
           done
-
-          if [ "$found_apk" -eq 0 ]; then
-            echo "No APK found in release output directories" >&2
-            exit 1
-          fi
 
           if [ "$signed_any" -eq 0 ]; then
             echo "No unsigned APK found to sign; all APKs were already signed"
           fi
+
+          if ! compgen -G 'release-apks/*.apk' > /dev/null; then
+            echo "No release APKs were collected" >&2
+            exit 1
+          fi
+
+          echo "Final APK artifacts:"
+          ls -lh release-apks/*.apk
 
       - name: Upload artifacts to workflow run
         uses: actions/upload-artifact@v4
         with:
           name: artemis-quest-nonroot-arm64-release
           path: |
-            app/build/outputs/apk/*/release/*.apk
+            release-apks/*.apk
 
       - name: Publish GitHub Release assets
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            app/build/outputs/apk/*/release/*.apk
+            release-apks/*.apk
